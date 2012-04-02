@@ -1326,6 +1326,22 @@ class assignment_base {
             }
         }
 
+        // download all submission options
+        echo '<div style="text-align:right">';
+        $downloadoptions = array();
+        if ($this->type == 'upload' && (int)$this->assignment->var4 !== 0) {
+            $downloadoptions[3] = get_string('downloadallnewnodraft', 'assignment');
+        }
+        $downloadoptions[1] = get_string('downloadallnew', 'assignment');
+        if ($this->type == 'upload' && (int)$this->assignment->var4 !== 0) {
+            $downloadoptions[2] = get_string('downloadallnodraft', 'assignment');
+        }
+        $downloadoptions[4] = get_string('export', 'assignment');
+        echo '<label for="menudownloadnew">' . get_string('download', 'assignment') . ': </label>';
+        choose_from_menu($downloadoptions, 'downloadnew', 3, get_string('downloadall', 'assignment'));
+        echo '<input type="button" value="' . get_string('go') . '" onclick="window.location=\''.$CFG->wwwroot.'/mod/assignment/submissions.php?q=\' +new Date().getTime()+ \'&amp;id='.$this->cm->id.'&amp;download=zip&amp;downloadnew=\' + document.getElementById(\'menudownloadnew\').value;"/>'.
+             '</div>';
+        
         /// Print quickgrade form around the table
         if ($quickgrade){
             echo '<form action="submissions.php" id="fastg" method="post">';
