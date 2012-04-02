@@ -6,6 +6,7 @@
     $id   = optional_param('id', 0, PARAM_INT);          // Course module ID
     $a    = optional_param('a', 0, PARAM_INT);           // Assignment ID
     $mode = optional_param('mode', 'all', PARAM_ALPHA);  // What mode are we in?
+    $download = optional_param('download' , 'none', PARAM_ALPHA); //ZIP download asked for?
 
     if ($id) {
         if (! $cm = get_coursemodule_from_id('assignment', $id)) {
@@ -40,6 +41,14 @@
     $assignmentclass = 'assignment_'.$assignment->assignmenttype;
     $assignmentinstance = new $assignmentclass($cm->id, $assignment, $cm, $course);
 
-    $assignmentinstance->submissions($mode);   // Display or process the submissions
+    if($download == "zip") {
+    	if ('4' == optional_param('downloadnew')){
+    		$assignmentinstance->download_final_submissions_and_feedback();
+    	} else {
+            $assignmentinstance->download_submissions();
+    	}
+    } else {
+        $assignmentinstance->submissions($mode);   // Display or process the submissions
+    }
 
 ?>

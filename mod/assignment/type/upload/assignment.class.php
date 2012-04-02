@@ -1057,6 +1057,209 @@ class assignment_upload extends assignment_base {
         $mform->setDefault('var4', 1);
 
     }
+    
+    /**
+     * Export all final submissions and feedback to a zip file.
+     */
+    function download_final_submissions_and_feedback(){
+    	// TODO modify so that only final submissions are included
+    	// TODO test with IE
+    	// TODO check userids match what is displayed in Lightwork
+        global $CFG;
+        require_once($CFG->libdir.'/filelib.php');
+        require_once($CFG->dirroot.'/backup/lib.php');
+        $submissions = $this->get_submissions('','');
+        if (empty($submissions)) {
+            error("there are no submissions to export");
+        }
+        $course     = $this->course;
+        $assignment = $this->assignment;
+        $type       = $assignment->assignmenttype; // TODO modify for team assignment
+        $count = 0;
+    
+        $tempdir = $CFG->dataroot."/".$course->id."/moddata/assignment/".$assignment->id."/temp/"; //get temp directory name
+        if (!file_exists($tempdir)) { //create temp dir if it doesn't already exist.
+            mkdir($tempdir);
+        }
+        $files = array();
+        foreach ($submissions as $submission) {
+            
+            $a_userid = $submission->userid;
+            $count = $count + 1;
+            //$a_user = get_complete_user_data("id", $a_userid); //get user
+            $userdir = $CFG->dataroot."/".$this->file_area_name($a_userid);
+            //error_log('$userdir : '.$userdir);
+                                  
+            $filelist = list_directories_and_files ($userdir);
+            //error_log('$filelist : '.print_r($filelist, TRUE));
+            
+            if (empty($filelist)){
+            	continue;
+            } else {
+                $files[] = "$userdir";	
+            }  
+        }
+        
+        error_log('$files : '.print_r($files, TRUE));
+        
+        if ($count) {
+        	$assignmentname = clean_filename($this->assignment->name);
+        	$filename = $assignmentname.".zip";
+        	zip_files($files, $tempdir.$filename);
+        }
+
+        add_to_log($this->course->id, 'assignment', 'download', "submissions.php?id=" . $this->cm->id,
+                   "Finished downloading " . $count . " assignments", $this->cm->id);
+
+        // send file to user.
+        if (file_exists($tempdir.$filename)) {
+            send_temp_file($tempdir.$filename, $filename, false);
+        }
+
+        // show error message if there is no zip file to download
+        if ($count == 0) {
+            $returnurl = "submissions.php?id={$this->cm->id}";
+            $this->view_header(get_string('submittedfiles', 'assignment'));
+            notify(get_string('nonewdownloads', 'assignment'));
+            print_continue($returnurl);
+            $this->view_footer();
+            die;
+        }	
+    }
+    
+    function download_submissions() {
+        global $CFG;
+        require_once($CFG->libdir.'/filelib.php');
+        $submissions = $this->get_submissions('','');
+        if (empty($submissions)) {
+            error("there are no submissions to download");
+        }
+        $filesforzipping = array();
+        $filesnewname = array();
+        $desttemp = "";
+        //create prefix of new filename
+        $filenewname = clean_filename($this->assignment->name);
+        $course     = $this->course;
+        $assignment = $this->assignment;
+        $type       = $assignment->assignmenttype;
+        $cm         = $this->cm;
+        $context    = get_context_instance(CONTEXT_MODULE, $cm->id);
+        $groupmode = groupmode($course,$cm);
+        $groupid = 0;   // All users
+        if($groupmode) $groupid = get_current_group($course->id, $full = false);
+        $count = 0;
+        $downloadnew = optional_param('downloadnew', 0);
+        $iscentralprinting = $this->is_centralprinting();
+ 
+        $downloadtype = '';
+        switch ($downloadnew) {
+            case 1: $downloadtype = get_string('downloadallnew', 'assignment'); break;
+            case 2: $downloadtype = get_string('downloadallnodraft', 'assignment'); break;
+            case 3: $downloadtype = get_string('downloadallnewnodraft', 'assignment'); break;
+            default: $downloadtype = get_string('downloadall', 'assignment'); break;
+        }
+        add_to_log($this->course->id, 'assignment', 'download', "submissions.php?id=" . $this->cm->id,
+                    "Start downloading - Selected option: " . $downloadtype, $this->cm->id);
+        
+        foreach ($submissions as $submission) {
+            // skip files that have downloaded status equal to 1
+            // when the request is only for the new submissions
+            if ($submission->is_downloaded == 1 && ($downloadnew == 1 || $downloadnew == 3)) {
+                continue;
+            }
+            // skip draft submission if its not wanted in the download zip file
+            // only if we have send for marking turn on
+            if ((int)$this->assignment->var4 !== 0 && $submission->data2 != ASSIGNMENT_STATUS_SUBMITTED && $downloadnew > 1) {
+                continue;
+            }
+            $a_userid = $submission->userid; //get userid
+            if ( (groups_is_member( $groupid,$a_userid)or !$groupmode or !$groupid)) {
+                $count = $count + 1;
+                $a_assignid = $submission->assignment; //get name of this assignment for use in the file names.
+                $a_user = get_complete_user_data("id", $a_userid); //get user
+                if ($type == 'team'){
+                    $team = $this->get_user_team($a_userid);
+                    $filearea = $this->team_file_area_name($team->id);
+                    $basedesttemp = $CFG->dataroot . "/" . substr($filearea, 0, strrpos($filearea, "/team")). "/temp/"; //get temp directory name
+                } else {
+                    $filearea = $this->file_area_name($a_userid);
+                    $basedesttemp = $CFG->dataroot . "/" . substr($filearea, 0, strrpos($filearea, "/")). "/temp/"; //get temp directory name
+                }
+                $desttemp = $basedesttemp;
+                error_log('$filearea : '.$filearea);
+                error_log('$desttemp : '.$desttemp);             
+                if (!file_exists($desttemp)) { //create temp dir if it doesn't already exist.
+                    mkdir($desttemp);
+                }
+                if ($basedir = make_upload_directory($filearea)) {
+                	error_log('$basedir : '.$basedir);
+                    if ($files = get_directory_list($basedir)) {
+                    	error_log('$files : '.print_r($files, TRUE));
+                        foreach ($files as $key => $file) {
+                            $filecleaned = clean_filename($file);  //remove any slashes
+                            //get files new name.
+                            if (!empty($a_user->idnumber)) {
+                                $filesforzip = $desttemp . $a_user->idnumber . "_" . $filenewname . "_" . $filecleaned;
+                            } else {
+                                $filesforzip = $desttemp . $a_user->username . "_" . $filenewname . "_" . $filecleaned;
+                            }
+                            //get files old name
+                            $fileold = $CFG->dataroot . "/" . $filearea . "/" . $file;
+                            if (!copy($fileold, $filesforzip)) {
+                                error ("failed to copy file<br>" . $filesforzip . "<br>" .$fileold);
+                            }
+ 
+                            //save file name to array for zipping.
+                            $filesforzipping[] = $filesforzip;
+ 
+                            // Set this submission as downloaded status
+                            // if assignment submission is not draft or send for marking is disabled
+                            if ($submission->data2 == ASSIGNMENT_STATUS_SUBMITTED || (int)$this->assignment->var4 === 0) {
+                                $update_submission = new stdClass;
+                                $update_submission->id = $submission->id;
+                                $update_submission->is_downloaded = 1;
+                                update_record('assignment_submissions', $update_submission);
+                            }
+                        }
+                    }
+                }
+
+                // create cover sheet for each submission only if the assignment is for central printing
+                if ($iscentralprinting) {
+                    $coversheet = $this->create_assignment_coversheet($desttemp, $a_user);
+                    // add cover sheet file to the files for zipping array
+                    // if the download type is all students files in one folder
+                    $filesforzipping[] = $coversheet;
+                }
+            }
+        } // end of foreach loop
+
+        //zip files
+        $filename = "assignment.zip"; //name of new zip file.
+        if ($count) zip_files($filesforzipping, $desttemp.$filename);
+        //delete old temp files
+        foreach ($filesforzipping as $filefor) {
+            fulldelete($filefor);
+        }
+
+        add_to_log($this->course->id, 'assignment', 'download', "submissions.php?id=" . $this->cm->id,
+                   "Finished downloading " . $count . " assignments", $this->cm->id);
+
+        //send file to user.
+        if (file_exists($basedesttemp.$filename)) {
+            send_temp_file($basedesttemp.$filename, $filename, false);
+        }
+
+        // show error message if there is no zip file to download
+        if ($count == 0) {
+            $returnurl = "submissions.php?id={$this->cm->id}";
+            $this->view_header(get_string('submittedfiles', 'assignment'));
+            notify(get_string('nonewdownloads', 'assignment'));
+            print_continue($returnurl);
+            $this->view_footer();
+            die;
+        }
+    }
 
 }
 
