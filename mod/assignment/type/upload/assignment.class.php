@@ -1062,69 +1062,109 @@ class assignment_upload extends assignment_base {
      * Export all final submissions and feedback to a zip file.
      */
     function download_final_submissions_and_feedback(){
-    	// TODO modify so that only final submissions are included
-    	// TODO test with IE
-    	// TODO check userids match what is displayed in Lightwork
         global $CFG;
         require_once($CFG->libdir.'/filelib.php');
         require_once($CFG->dirroot.'/backup/lib.php');
-        $submissions = $this->get_submissions('','');
-        if (empty($submissions)) {
-            error("there are no submissions to export");
-        }
+        
         $course     = $this->course;
         $assignment = $this->assignment;
-        $type       = $assignment->assignmenttype; // TODO modify for team assignment
+        $assignmentname = clean_filename($this->assignment->name);
         $count = 0;
-    
-        $tempdir = $CFG->dataroot."/".$course->id."/moddata/assignment/".$assignment->id."/temp/"; //get temp directory name
-        if (!file_exists($tempdir)) { //create temp dir if it doesn't already exist.
+        $type  = $assignment->assignmenttype;
+        $submittedsql = "AND a.data2 = "."'".ASSIGNMENT_STATUS_SUBMITTED."' ";
+        if ($type == 'uploadsingle'){
+            $submittedsql = "";	
+        }
+        if ($type == 'team'){
+        	$returnurl = "submissions.php?id={$this->cm->id}";
+            $this->view_header(get_string('submittedfiles', 'assignment'));
+            notify(get_string('exportnotsupported', 'assignment'));
+            print_continue($returnurl);
+            $this->view_footer();
+            die; 
+        }
+        $submissions = get_records_sql("SELECT a.*
+                              FROM {$CFG->prefix}assignment_submissions a,
+                                   {$CFG->prefix}user u
+                              WHERE u.id = a.userid
+                              AND a.assignment = '$assignment->id' ".$submittedsql.
+                              "ORDER BY lastname ASC");
+                                   
+        if (empty($submissions)){
+            $returnurl = "submissions.php?id={$this->cm->id}";
+            $this->view_header(get_string('submittedfiles', 'assignment'));
+            notify(get_string('nosubmittedsubmissions', 'assignment'));
+            print_continue($returnurl);
+            $this->view_footer();
+            die;    	
+        }
+         //get temp directory name
+        $tempdir = $CFG->dataroot."/".$course->id."/moddata/assignment/".$assignment->id."/temp";
+        if (!file_exists($tempdir)) {
             mkdir($tempdir);
         }
-        $files = array();
+        $tempassignmentdir = $tempdir."/".$assignmentname;
+        if (!file_exists($tempassignmentdir)) {
+            mkdir($tempassignmentdir);
+        }
         foreach ($submissions as $submission) {
-            
+        	$count = $count + 1;        	           
             $a_userid = $submission->userid;
-            $count = $count + 1;
-            //$a_user = get_complete_user_data("id", $a_userid); //get user
+            $a_user = get_complete_user_data("id", $a_userid);
+            $tempuserdir = $tempassignmentdir."/".$a_user->lastname."-".$a_user->firstname;
+            $tempuserresponsedir = $tempuserdir."/responses";
+            if (!file_exists($tempuserdir)) {
+                mkdir($tempuserdir);
+            }
+            if (!file_exists($tempuserresponsedir)) {
+                mkdir($tempuserresponsedir);
+            }
+                       
             $userdir = $CFG->dataroot."/".$this->file_area_name($a_userid);
-            //error_log('$userdir : '.$userdir);
-                                  
             $filelist = list_directories_and_files ($userdir);
-            //error_log('$filelist : '.print_r($filelist, TRUE));
-            
             if (empty($filelist)){
             	continue;
-            } else {
-                $files[] = "$userdir";	
-            }  
+            }            
+            foreach ($filelist as $filename){
+            	if ($filename == "responses"){
+            		$responsefilelist = list_directories_and_files ($userdir."/responses");
+            	    foreach ($responsefilelist as $responsefilename){
+                        if (!copy($userdir."/responses/".$responsefilename, $tempuserdir."/responses/".$responsefilename)) {
+                            error_log ("failed copying: " . $userdir."/responses/".$responsefilename ." to ".
+                                       $tempuserdir."/responses/".$responsefilename);
+                        }
+                    }
+            	}
+                if (!copy($userdir."/".$filename, $tempuserdir."/".$filename)) {
+                    error_log ("failed copying: " . $userdir."/".$filename . " to " .$tempuserdir."/".$filename);
+                }
+            }
+            
         }
         
-        error_log('$files : '.print_r($files, TRUE));
-        
-        if ($count) {
-        	$assignmentname = clean_filename($this->assignment->name);
-        	$filename = $assignmentname.".zip";
-        	zip_files($files, $tempdir.$filename);
+        $filelist = list_directories_and_files ($tempassignmentdir);        
+        $dirs[] = "$tempassignmentdir";
+        $filename = $assignmentname.".zip";
+        zip_files($dirs, $tempdir.$filename);
+        //delete old temp files
+        foreach ($dirs as $dir) {
+            fulldelete($dir);
         }
 
         add_to_log($this->course->id, 'assignment', 'download', "submissions.php?id=" . $this->cm->id,
-                   "Finished downloading " . $count . " assignments", $this->cm->id);
+                   "Finished downloading " . $count . " submissions", $this->cm->id);
 
         // send file to user.
         if (file_exists($tempdir.$filename)) {
             send_temp_file($tempdir.$filename, $filename, false);
-        }
-
-        // show error message if there is no zip file to download
-        if ($count == 0) {
+        } else {
             $returnurl = "submissions.php?id={$this->cm->id}";
             $this->view_header(get_string('submittedfiles', 'assignment'));
-            notify(get_string('nonewdownloads', 'assignment'));
+            notify(get_string('nosubmittedsubmissions', 'assignment'));
             print_continue($returnurl);
             $this->view_footer();
-            die;
-        }	
+            die;    		
+        }      
     }
     
     function download_submissions() {
@@ -1149,7 +1189,7 @@ class assignment_upload extends assignment_base {
         if($groupmode) $groupid = get_current_group($course->id, $full = false);
         $count = 0;
         $downloadnew = optional_param('downloadnew', 0);
-        $iscentralprinting = $this->is_centralprinting();
+        //$iscentralprinting = $this->is_centralprinting();
  
         $downloadtype = '';
         switch ($downloadnew) {
