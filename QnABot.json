@@ -1,0 +1,94 @@
+{
+   "qna": [
+      {
+         "qid": "Unassigned.001",
+         "q": [
+            "How do I get my class moved to a bigger venue"
+         ],
+         "a": "Raise a request for a larger teaching venue via AskUs - Timetable Mgmt - Change of Venue Request.",
+         "r": {
+            "title": "",
+            "imageUrl": ""
+         }
+      },
+      {
+         "qid": "Assessment.001",
+         "q": [
+            "As COVID levels move up and down, how lenient are we being with student assessment/assignment due dates"
+         ],
+         "a": "As we did in Semester one, be as lenient and flexible as possible. The movements of alert levels and uncertainty is unsettling for students and for you as staff so flexibility and managing workload is important. If you need help, please reach out to your Head of School.",
+         "r": {
+            "title": "",
+            "imageUrl": ""
+         }
+      },
+      {
+         "qid": "Assessment.002"
+         "q": [
+            "Where can I get help with online assessments"
+         ],
+         "a": "If you need help, please email your college representative or request support using one of the Support the Pivot options on the COVID-19 response Advice and strategies for coordinators SharePoint page.",
+         "r": {
+            "title": "",
+            "imageUrl": ""
+         },
+         
+      },
+      {
+         "qid": "EndSemesterAssessment.001",
+         "q": [
+            "Are there exams at the end of Semester 2"
+         ],
+         "a": "Due to the COVID-19 pandemic, it has been decided that most paper-based examinations will not take place in Semester 2. They will be replaced by online exams or other assessments.",
+         "r": {
+            "title": "",
+            "imageUrl": ""
+         }
+      },
+      {
+         "qid": "EndSemesterAssessment.002",
+         "q": [
+            "What alternatives do I have for face-to-face exams"
+         ],
+         "a": "Instead of face-to-face final exams, the university has identified three alternative assessments to use.",
+         "r": {
+            "title": "",
+            "imageUrl": ""
+         }
+      },
+      {
+         "qid": "HealthSafety.001",
+         "q": [
+            "Do I need to wear a face mask when I am teaching a class face to face"
+         ],
+         "a": "The Ministry of Health guidelines encourage the wearing of a face mask where you are unable to maintain a 1 meter distance from your usual work colleagues OR if you work in a public facing service and are not able to maintain 2 meter distance.
+You should also wear a face mask where the nature of your teaching means you cannot maintain physical distancing to achieve workplace/teaching practices.",
+         "r": {
+            "title": "",
+            "imageUrl": ""
+         }
+      },
+      {
+         "qid": "HealthSafety.002",
+         "q": [
+            "When I am teaching am I required to maintain physical distancing of 1 meter at all times"
+         ],
+         "a": "Yes. The only exception to this would be where the nature of the teaching requires you to undertake activities alongside students where physical distancing is not possible - such as clinical work or animal research tasks. In these cases specific controls will be in place for your and the students' safety, including wearing a face mask",
+         "r": {
+            "title": "",
+            "imageUrl": ""
+         }
+      },
+      {
+         "qid": "HealthSafety.003",
+         "q": [
+            "Do I need to use the contact tracing app and sign in and out of every building each time I go in and out"
+         ],
+         "a": "Yes.",
+         "r": {
+            "title": "",
+            "imageUrl": ""
+         }
+      }
+   ]
+}
